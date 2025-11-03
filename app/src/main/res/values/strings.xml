@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">BLE Connectivity</string>
+    <string name="bluetooth_required">Bluetooth is required to scan for devices.</string>
+    <string name="no_bluetooth_support">This device does not support Bluetooth.</string>
+    <string name="tag_navigation">TAG_NAVIGATION</string>
+    <string name="navigating_to_weight_screen">Navigating to Weight Screen</string>
+    <string name="disconnecting_and_navigating_back">Disconnecting and navigating back to Devices List Screen</string>
+    <string name="main_screen_route">main_screen</string>
+    <string name="devices_list_screen_route">devices_list_screen</string>
+    <string name="weight_screen_route">weight_screen</string>
+    <string name="ble_manager_log_tag">BLEManager</string>
+    <string name="connected_to_device_navigating">Connected to device, navigating to Weight Screen</string>
+    <string name="ble_device_scanner">BLE Device Scanner</string>
+    <string name="status">Status</string>
+    <string name="devices_found">Devices Found</string>
+    <string name="stop_scan">Stop Scan</string>
+    <string name="start_scan">Start Scan</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="back">Back</string>
+    <string name="weight">Weight</string>
+    <string name="empty_weight">---</string>
+    <string name="unknown_device">Unknown Device</string>
+    <string name="rssi_format">RSSI: %s dBm</string>
+    <string name="connected">Connected</string>
+    <string name="ble_scanner_app">BLE Scanner App</string>
+    <string name="get_started">Get Started</string>
+    <string name="bluetooth_icon">Bluetooth Icon</string>
+    <string name="welcome_to_ble_scanner">Welcome to BLE Scanner</string>
+    <string name="app_description">This application helps you discover and connect to nearby Bluetooth Low Energy (BLE) devices. You can scan for devices, view their signal strength, and interact with their services.</string>
+    <string name="connected_to_weight_machine">Connected to Weight Machine</string>
+</resources>
