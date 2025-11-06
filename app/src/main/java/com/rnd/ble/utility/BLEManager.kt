@@ -15,6 +15,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
+data class WeightData(
+    val weight: Double,
+    val isStable: Boolean,
+    val unit: String
+)
+
 class BLEManager(private val context: Context) {
 
     private val bluetoothAdapter: BluetoothAdapter? by lazy {
@@ -49,8 +55,15 @@ class BLEManager(private val context: Context) {
     private val _connectedDevice = MutableStateFlow<BluetoothDevice?>(null)
     val connectedDevice: StateFlow<BluetoothDevice?> = _connectedDevice.asStateFlow()
 
+    private val _weightData = MutableStateFlow<WeightData?>(null)
+    val weightData: StateFlow<WeightData?> = _weightData.asStateFlow()
+
     private val scanResults = mutableMapOf<String, BleDevice>()
     private val dataBuffer = StringBuilder()
+
+    private val MANUFACTURER_ID = 256
+    private val WEIGHT_OFFSET = 10
+    private val STABLE_OFFSET = 14
 
     // Scan Callback
     private val scanCallback = object : ScanCallback() {
@@ -69,6 +82,34 @@ class BLEManager(private val context: Context) {
                 .filter { it.name != "Unknown Device" }
                 .sortedByDescending { it.rssi }
                 .toList()
+
+            // --- New code for weight scale ---
+            result.scanRecord?.getManufacturerSpecificData(MANUFACTURER_ID)?.let { bytes ->
+                Log.d("BLEManager", "Found manufacturer data for ID $MANUFACTURER_ID with length ${bytes.size}")
+                if (bytes.size >= STABLE_OFFSET + 1) { // Ensure data is long enough
+                    val weightRaw = ((bytes[WEIGHT_OFFSET].toInt() and 0xFF) shl 8) or (bytes[WEIGHT_OFFSET + 1].toInt() and 0xFF)
+                    val stable = (bytes[STABLE_OFFSET].toInt() and 0xF0) shr 4
+                    val unitRaw = bytes[STABLE_OFFSET].toInt() and 0x0F
+
+                    Log.d("BLEManager", "Weight Raw: $weightRaw, Stable: $stable, Unit: $unitRaw")
+
+                    // As per ScaleWatcher.java, weight is 0.01kg
+                    val weight = weightRaw / 100.0
+                    val isStable = stable != 0
+                    val unit = when (unitRaw) {
+                        0 -> "lb"
+                        1 -> "kg"
+                        else -> "Unknown"
+                    }
+
+                    if(!isStable) {
+                        val newWeightData = WeightData(weight, isStable, unit)
+                        _receivedData.value = "${newWeightData.weight} $unit"
+                        Log.d("BLEManager", "Parsed Weight Data: $newWeightData")
+                    }
+
+                }
+            }
         }
 
         override fun onScanFailed(errorCode: Int) {
@@ -87,11 +128,15 @@ class BLEManager(private val context: Context) {
                     Log.d("BLEManager", "Connected to GATT server")
                     _connectionState.value = ConnectionState.CONNECTED
                     _connectedDevice.value = gatt.device
-                    // Discover services after connection
-                    gatt.discoverServices()
+                    // Discover services after a delay
+                    bleScope.launch {
+                        delay(600)
+                        gatt.discoverServices()
+                    }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    Log.d("BLEManager", "Disconnected from GATT server")
+                    Log.d("BLEManager", "Disconnected from GATT server, status: $status")
+                    Log.d("BLEManager", "Disconnected from GATT new state: $newState")
                     _connectionState.value = ConnectionState.DISCONNECTED
                     _connectedDevice.value = null
                     stopPolling()
@@ -391,12 +436,24 @@ class BLEManager(private val context: Context) {
         stopScan()
 
         Log.d("BLEManager", "Connecting to device: ${device.address}")
-        bluetoothGatt = device.connectGatt(
-            context,
-            false,
-            gattCallback,
-            BluetoothDevice.TRANSPORT_LE
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Log.d("BLEManager", "Connecting with PHY_LE_1M_MASK")
+            bluetoothGatt = device.connectGatt(
+                context,
+                false,
+                gattCallback,
+                BluetoothDevice.TRANSPORT_LE,
+                BluetoothDevice.PHY_LE_1M_MASK
+            )
+        } else {
+            Log.d("BLEManager", "Connecting without explicit PHY")
+            bluetoothGatt = device.connectGatt(
+                context,
+                false,
+                gattCallback,
+                BluetoothDevice.TRANSPORT_LE
+            )
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -503,6 +560,7 @@ class BLEManager(private val context: Context) {
         stopPolling()
         disconnect()
         bleScope.cancel()
+        _weightData.value = null
     }
 
     data class BleDevice(

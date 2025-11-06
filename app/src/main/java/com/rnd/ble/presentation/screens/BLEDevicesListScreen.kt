@@ -50,7 +50,6 @@ fun BLEDevicesListScreen(
 
     LaunchedEffect(connectionState) {
         if (connectionState == BLEManager.ConnectionState.CONNECTED) {
-            Log.e(stringResource(R.string.ble_manager_log_tag), stringResource(R.string.connected_to_device_navigating))
             onNavigateToWeightScreen.invoke()
         }
         if (connectionState != BLEManager.ConnectionState.CONNECTING) {
